@@ -1,0 +1,3 @@
+date,service,region,cost,currency,charge type
+2026-09-01,Amazon EC2,us-east-1,12.50,USD,Usage
+2026-09-02,Amazon S3,us-east-1,2.30,USD,Usage

@@ -1,0 +1,55 @@
+import {test,expect} from '@playwright/test';
+import path from 'node:path';
+test('sample report, evidence, filtering, next steps, and CSV export',async({page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('/');
+ await page.getByRole('button',{name:'Try sample bill',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Billing overview'})).toBeVisible();
+ await expect(page.locator('.primary-stat')).toContainText('$370.50');
+ await expect(page.locator('.stat-card').nth(3)).toContainText('$149.80');
+ await page.getByRole('button',{name:'Show supporting rows',exact:true}).click();
+ await expect(page.getByRole('dialog')).toBeVisible();
+ await expect(page.locator('.evidence-equation')).toContainText('$203.40');
+ await page.getByRole('button',{name:'Close evidence',exact:true}).click();
+ await page.getByRole('tab',{name:'Evidence',exact:true}).click();
+ await page.getByRole('textbox',{name:'Search evidence'}).fill('Lambda');
+ await expect(page.locator('tbody tr').first()).toContainText('Lambda');
+ await page.getByRole('tab',{name:'Next steps',exact:true}).click();
+ await page.getByRole('checkbox').first().check();
+ await expect(page.locator('.steps-section .badge')).toContainText('1 /');
+ await page.getByRole('tab',{name:'Overview',exact:true}).click();
+ const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export CSV'}).click();
+ expect((await download).suggestedFilename()).toBe('billsense-report.csv');
+ await page.evaluate(()=>window.scrollTo(0,0));
+ await expect(page.locator('.recharts-area-curve')).toBeVisible();
+ await page.screenshot({path:'../docs/report-desktop.png',fullPage:true});
+ expect(errors).toEqual([]);
+});
+test('uploaded files use real backend, mapping and AI fallback',async({page})=>{
+ await page.goto('/analyze');
+ await page.getByLabel('Current CSV file',{exact:true}).setInputFiles(path.resolve('../samples/current.csv'));
+ await expect(page.locator('.detected')).toContainText('generic');
+ await page.getByRole('button',{name:'Analyze bill',exact:true}).click();
+ await expect(page.locator('.primary-stat')).toContainText('$370.50');
+ await page.getByRole('tab',{name:/Findings/}).click();
+ await page.getByRole('checkbox',{name:'Use AI to explain anonymized spending totals'}).check();
+ await page.getByRole('button',{name:'Explain findings'}).click();
+ await expect(page.locator('.ai-panel')).toContainText('not configured');
+});
+test('mobile layout, navigation and sample evidence',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto('/');
+ await page.getByRole('button',{name:'Try sample bill',exact:true}).click();
+ await expect(page.locator('.primary-stat')).toContainText('$370.50');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+ await expect(page.locator('.recharts-area-curve')).toBeVisible();
+ await page.screenshot({path:'../docs/report-mobile.png',fullPage:true});
+ await page.getByRole('button',{name:'Open navigation'}).click();
+ await page.getByRole('link',{name:'Analyze a bill'}).click();
+ await expect(page.getByRole('heading',{name:"Let's make sense of your bill."})).toBeVisible();
+});
+test('unsupported monetary input displays useful error',async({page})=>{
+ await page.goto('/analyze');
+ await page.getByLabel('Current CSV file',{exact:true}).setInputFiles({name:'bad.csv',mimeType:'text/csv',buffer:Buffer.from('service,cost,currency\nEC2,abc,USD\n')});
+ await page.getByRole('button',{name:'Analyze bill',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('Invalid monetary value');
+});
