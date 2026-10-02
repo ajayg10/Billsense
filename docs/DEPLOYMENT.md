@@ -1,64 +1,142 @@
-# Deploy BillSense to AWS
+# Deploy BillSense: Amplify Hosting + SAM backend
 
-The provided stack hosts both the app and API on AWS. Deploy it using your own authorized AWS account. This workspace does not contain configured AWS credentials, so the project is not deployed yet.
+The default deployment now uses **Amplify Hosting for React** and **Lambda + API Gateway HTTP API for FastAPI**. SAM deploys only the backend. Amplify builds the frontend automatically from the connected GitHub branch.
 
-## Prerequisites
+These files are prepared and tested locally; no AWS deployment or GitHub push has been performed from this workspace.
 
-- AWS CLI v2 authenticated using a short-lived profile / IAM Identity Center where possible.
-- AWS SAM CLI, Docker (for the provided reproducible Lambda build), Node.js 22+.
-- Permissions for CloudFormation, IAM roles, Lambda, API Gateway, S3, CloudFront and CloudWatch.
-- Account concurrency quota permitting two reserved Lambda executions. If a new account cannot reserve that amount, adjust `ReservedConcurrentExecutions` after checking its quota.
+## Repository layout
 
-## Deploy with AI disabled first
+Your GitHub repository should contain `amplify.yml`, `frontend/`, `backend/`, and `infra/` at its root. When extracting the source ZIP, copy the **contents** of the `billsense` folder into the repository. If you instead commit the wrapper folder, appRoot and `AMPLIFY_MONOREPO_APP_ROOT` must both become `billsense/frontend`; the provided configuration assumes `frontend`.
 
-From the repository root on Bash (WSL or Git Bash on Windows):
+The GitHub target supplied for this project is `ajayg10/Billsense`, branch `main`. Repository access and its current contents have not been verified here. Merge the changes with any work you have already committed rather than overwriting unrelated edits.
+
+## 1. Deploy the backend
+
+Prerequisites:
+- AWS CLI v2 authenticated to the intended account.
+- AWS SAM CLI, Python 3, and Docker for the default container build.
+- Permissions for CloudFormation, IAM roles, Lambda, API Gateway, CloudWatch and the SAM deployment artifact bucket.
+- Account concurrency quota permitting two reserved Lambda executions; adjust that setting if your account's quota requires it.
+
+From the repository root in Bash (WSL/Git Bash on Windows):
 
 ```bash
 export AWS_PROFILE=your-authorized-profile
 export AWS_REGION=us-east-1
+export AI_ENABLED=false
 bash infra/deploy.sh
 ```
 
-The script verifies account access, builds the frontend, packages the backend with SAM, creates the stack, uploads frontend assets, invalidates CloudFront, and prints the site URL. Review your account and region before running. CloudFront propagation can take several minutes.
+The script defaults to stack `billsense-backend`, builds into `.aws-sam/backend`, and deploys that exact built template. Review the SAM change set when prompted. This stack contains no frontend S3 bucket or CloudFront distribution. SAM's own deployment-artifact S3 bucket is still expected.
 
-Windows users without Bash can run the same npm/SAM commands manually and upload `frontend/dist/` to the bucket named in CloudFormation outputs.
+It prints `ApiUrl` and `HealthUrl`, and writes `infra/amplify-rewrites.generated.json`. Keep the API origin, such as `https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com`.
 
-The static bucket is private and only CloudFront may read it. A viewer-request function rewrites frontend navigation to `index.html`. `/api/*` has a separate behavior with caching disabled and no SPA fallback. API content is never uploaded to the static bucket. The API Gateway endpoint remains publicly reachable; CORS is not access control.
+If Docker is unavailable but **Python 3.12** is installed locally, set `SAM_USE_CONTAINER=false` before running the script. Verify that `sam build` can locate Python 3.12 and its compatible dependencies.
 
-## Verify the actual deployment
-
-- Open the CloudFront URL in a private browser window.
-- Try sample bill and confirm USD 370.50 net cost.
-- Upload `samples/current.csv`, inspect evidence, and export CSV.
-- Open `/report` directly or refresh: the app should explain that reports clear on refresh.
-- Check `/api/v1/health` and confirm valid JSON.
-- Check malformed multipart uploads receive JSON errors, not index.html.
-- Check mobile layout and keep the app reachable throughout judging.
-- Confirm API caching is disabled and application logs do not contain billing content.
-
-## Enable Bedrock separately
-
-Choose a regional model with Converse support and access enabled in your account. Pass its model ID and exact model ARN into the SAM parameters along with `AIEnabled=true`:
+Manual backend alternative (PowerShell users can run these commands separately):
 
 ```bash
-sam deploy --stack-name billsense --region us-east-1 --resolve-s3 \
-  --capabilities CAPABILITY_IAM \
-  --parameter-overrides AIEnabled=true BedrockModelId=YOUR_MODEL_ID BedrockModelArn=YOUR_MODEL_ARN
+sam build --template-file infra/template.yaml --build-dir .aws-sam/backend --use-container
+sam deploy --template-file .aws-sam/backend/template.yaml --stack-name billsense-backend --region us-east-1 --resolve-s3 --capabilities CAPABILITY_IAM --confirm-changeset --parameter-overrides AIEnabled=false
 ```
 
-Do not paste AWS keys into the frontend. The template grants `bedrock:InvokeModel` only to the specified ARN. Cross-region inference profiles may require additional specific model/profile permissions and supported region configuration; the provided policy is for a regional model. Verify access with an opted-in upload. Provider denial, invalid output, and timeouts fall back to the calculated report.
+Retrieve the API origin from CloudFormation Outputs. Generate rules with:
 
-AI output uses validated JSON rather than assuming every model supports native structured outputs. Model text is escaped and cannot supply displayed totals or arbitrary links. Semantic accuracy still needs evaluation with the chosen model before enabling AI for users.
+```bash
+python3 infra/amplify-rewrites.py https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com
+```
 
-## Cost controls
+Copy the JSON output into Amplify in step 3. On Windows, use `python` instead of `python3` if appropriate.
 
-- AI disabled by default; no model charges for ordinary reports.
-- API throttling: 2 requests/second, burst 5; Lambda reserved concurrency 2.
-- Lambda memory 512 MB, timeout 28 seconds; model output capped at 650 tokens.
-- CloudWatch logs expire after 7 days.
-- Set an AWS Budget and notifications in your account. These controls reduce exposure but do not establish a hard spending cap.
-- No NAT gateway, always-on compute, or database.
+## 2. Connect Amplify to GitHub
 
-## Cleanup after judging
+1. Push/merge the provided changes into your repository using your normal Git workflow.
+2. Open Amplify Hosting and create an app with GitHub as the provider.
+3. Select `ajayg10/Billsense` and `main`.
+4. Select the monorepo option and set the app root to `frontend`.
+5. Verify `AMPLIFY_MONOREPO_APP_ROOT=frontend`. Amplify normally sets this when you select the monorepo root.
+6. Use the repository-root `amplify.yml`. It selects Node.js 22, runs `npm ci --include=dev`, runs `npm run build`, and publishes `frontend/dist`.
+7. Save and deploy. Amplify handles frontend hosting; no Amplify-managed application backend is required.
 
-Retain the live app until evaluation is complete. When you intentionally want to remove it, empty the **specific BillSense frontend bucket** shown in stack outputs, then delete the stack with SAM/CloudFormation. Do not delete unrelated buckets or resources. CloudFront disable/delete may take time. Check for retained deployment artifacts in the SAM-managed bucket and remaining charges.
+Leave frontend API-base environment variables unset: this version intentionally uses same-origin `/api` URLs. Never add AWS secrets to frontend build variables.
+
+## 3. Configure routing
+
+In the app's **Hosting → Rewrites and redirects**, paste the JSON generated by `infra/amplify-rewrites.py` or `infra/deploy.sh`.
+
+The ordered rules are:
+
+1. `/api/<*>` → `https://YOUR_API_ID.execute-api.YOUR_REGION.amazonaws.com/api/<*>`, status `200`.
+2. `/api` → the same origin's `/api`, status `200` (upstream will return its own not-found response).
+3. AWS's documented extension-aware SPA regex → `/index.html`, status `200`.
+
+The generator uses the deployed API origin, preserves the `/api` prefix exactly once, and rejects URLs containing credentials, a path/stage, query, fragment, port, or an insecure scheme. The supplied SAM API has a `$default` stage with no stage path.
+
+**Keep the API rules above the SPA rule.** A catch-all `/<*> → /index.html` above them can serve HTML to API callers. Remove conflicting default fallback rules if necessary. The app now shows a readable service error if API calls return HTML instead of JSON.
+
+Rules are configured separately in Amplify; merely committing the generated JSON or `amplify.yml` does not install rewrite rules. Preserve any unrelated custom-domain redirects that your app already needs and keep their ordering intentional.
+
+Amplify supports HTTPS reverse-proxy rewrites. Actual multipart POST forwarding, upstream error handling, and cache behavior still need verification on your deployed app. Do not infer upload readiness from a working static page or sample GET alone.
+
+Because the browser calls its own Amplify origin, this path does not require cross-origin API access. `AllowedOrigins` is configurable for optional direct API clients, but setting it alone will not change the frontend's relative URLs. If you later choose direct cross-origin calls, change all API requests and download links and explicitly allow the Amplify origin; no wildcard is necessary.
+
+## 4. Smoke-test the public deployment
+
+Use a private browser window and the actual Amplify URL:
+
+- Open `/` and click Try sample bill: net cost must be **USD 370.50**.
+- Upload `samples/current.csv`: net cost must also be **USD 370.50**.
+- Upload it with `samples/previous.csv`: previous total **USD 220.70**, change **USD 149.80**.
+- Open finding evidence, search records, export CSV, and try a mobile viewport.
+- Download the template to confirm non-JSON API downloads use the same proxy.
+- Directly open `/analyze`, `/privacy`, and `/methodology`; React must render after refresh.
+- `/report` on refresh should explain that reports clear from memory, not show a hosting 404.
+- Check `/api/v1/health` returns JSON, not the React index page.
+- Submit an invalid cost: a useful 422 error must survive the proxy.
+- Confirm API responses include `Cache-Control: no-store`; private reports must never be served from a hosting cache.
+- With AI disabled, an opted-in explanation should fall back gracefully.
+
+Optional backend checks, replacing the placeholder:
+
+```bash
+curl -i https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/api/v1/health
+curl -i -F current=@samples/current.csv https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/api/v1/analyze
+```
+
+Repeat those checks using the Amplify domain to test the complete proxy path.
+
+## Optional: enable Bedrock later
+
+Choose a regional Converse-compatible model with access in your account. The backend defaults to AI disabled; ordinary parsing does not need model access.
+
+For script deployment:
+
+```bash
+export AI_ENABLED=true
+export BEDROCK_MODEL_ID=YOUR_MODEL_ID
+export BEDROCK_MODEL_ARN=YOUR_EXACT_REGIONAL_MODEL_ARN
+bash infra/deploy.sh
+```
+
+Keep these environment variables set for later backend deployments if AI should stay enabled. The script defaults to false on a fresh shell. The policy grants only `bedrock:InvokeModel` for the supplied ARN. Cross-region inference profiles may need additional exact model/profile permissions; this template assumes a regional model. The app uses validated JSON and never lets model text supply displayed totals.
+
+For optional direct browser access, set `ALLOWED_ORIGINS` to exact comma-separated origins before deployment. The backend trims whitespace and trailing slashes.
+
+## Existing S3/CloudFront deployment
+
+The original template is retained as `infra/template-s3-cloudfront.yaml` for reference and maintenance of an existing stack. Do **not** update an existing full frontend/backend stack with the new backend-only template: CloudFormation would plan removal of its frontend resources.
+
+The script uses a new stack name and refuses to update a stack that already owns an S3 bucket or CloudFront distribution. Leave existing resources alone while you verify the Amplify site. If you deliberately migrate a live app, old resources may incur charges until you intentionally clean them up after the new app works and judging is complete.
+
+## Costs and operations
+
+API throttling is two requests/second with burst five; Lambda reserved concurrency is two, memory 512 MB, timeout 28 seconds. Logs expire after seven days. AI has bounded output and retries. These controls and AWS Budget notifications are **not a hard spending cap**.
+
+Keep the public app reachable throughout judging. Afterward, intentionally remove the Amplify app and backend stack when no longer needed, and review any original hosting stack and SAM deployment artifacts. Do not delete unrelated resources.
+
+## Official references
+
+- Amplify monorepo setup: https://docs.aws.amazon.com/amplify/latest/userguide/monorepo-configuration.html
+- Build specification: https://docs.aws.amazon.com/amplify/latest/userguide/yml-specification-syntax.html
+- Reverse-proxy and SPA rules: https://docs.aws.amazon.com/amplify/latest/userguide/redirect-rewrite-examples.html
+- Rewrite troubleshooting: https://docs.aws.amazon.com/amplify/latest/userguide/troubleshooting-redirects.html

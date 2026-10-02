@@ -1,7 +1,11 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: BillSense - private static frontend, CloudFront, HTTP API and stateless FastAPI Lambda
+Description: BillSense backend - stateless FastAPI Lambda and HTTP API; frontend hosted separately by Amplify
 Parameters:
+  AllowedOrigins:
+    Type: String
+    Default: https://example.invalid
+    Description: Comma-separated exact browser origins for optional direct API access. Not required by the same-origin Amplify proxy.
   AIEnabled:
     Type: String
     Default: 'false'
@@ -38,7 +42,7 @@ Resources:
         Variables:
           AI_ENABLED: !Ref AIEnabled
           BEDROCK_MODEL_ID: !Ref BedrockModelId
-          ALLOWED_ORIGINS: 'https://example.invalid'
+          ALLOWED_ORIGINS: !Ref AllowedOrigins
       Policies:
         - AWSLambdaBasicExecutionRole
         - !If
@@ -60,149 +64,11 @@ Resources:
     Properties:
       LogGroupName: !Sub '/aws/lambda/${BillingFunction}'
       RetentionInDays: 7
-  WebBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      OwnershipControls:
-        Rules:
-          - ObjectOwnership: BucketOwnerEnforced
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
-  OriginAccess:
-    Type: AWS::CloudFront::OriginAccessControl
-    Properties:
-      OriginAccessControlConfig:
-        Name: !Sub '${AWS::StackName}-static-oac'
-        OriginAccessControlOriginType: s3
-        SigningBehavior: always
-        SigningProtocol: sigv4
-  StaticCache:
-    Type: AWS::CloudFront::CachePolicy
-    Properties:
-      CachePolicyConfig:
-        Name: !Sub '${AWS::StackName}-static'
-        DefaultTTL: 300
-        MaxTTL: 86400
-        MinTTL: 0
-        ParametersInCacheKeyAndForwardedToOrigin:
-          EnableAcceptEncodingGzip: true
-          EnableAcceptEncodingBrotli: true
-          CookiesConfig: {CookieBehavior: none}
-          HeadersConfig: {HeaderBehavior: none}
-          QueryStringsConfig: {QueryStringBehavior: none}
-  NoApiCache:
-    Type: AWS::CloudFront::CachePolicy
-    Properties:
-      CachePolicyConfig:
-        Name: !Sub '${AWS::StackName}-api-no-cache'
-        DefaultTTL: 0
-        MaxTTL: 0
-        MinTTL: 0
-        ParametersInCacheKeyAndForwardedToOrigin:
-          EnableAcceptEncodingGzip: false
-          CookiesConfig: {CookieBehavior: none}
-          HeadersConfig: {HeaderBehavior: none}
-          QueryStringsConfig: {QueryStringBehavior: none}
-  ApiForwarding:
-    Type: AWS::CloudFront::OriginRequestPolicy
-    Properties:
-      OriginRequestPolicyConfig:
-        Name: !Sub '${AWS::StackName}-api-forward'
-        CookiesConfig: {CookieBehavior: none}
-        HeadersConfig:
-          HeaderBehavior: whitelist
-          Headers: [Content-Type, Origin, Access-Control-Request-Method, Access-Control-Request-Headers]
-        QueryStringsConfig: {QueryStringBehavior: all}
-  SecurityHeaders:
-    Type: AWS::CloudFront::ResponseHeadersPolicy
-    Properties:
-      ResponseHeadersPolicyConfig:
-        Name: !Sub '${AWS::StackName}-security'
-        SecurityHeadersConfig:
-          ContentTypeOptions: {Override: true}
-          FrameOptions: {FrameOption: DENY, Override: true}
-          ReferrerPolicy: {ReferrerPolicy: no-referrer, Override: true}
-          StrictTransportSecurity: {AccessControlMaxAgeSec: 31536000, IncludeSubdomains: true, Override: true}
-  SpaRoutes:
-    Type: AWS::CloudFront::Function
-    Properties:
-      Name: !Sub '${AWS::StackName}-spa-routes'
-      AutoPublish: true
-      FunctionConfig:
-        Comment: Rewrite frontend navigation only. API behavior has no rewrite.
-        Runtime: cloudfront-js-2.0
-      FunctionCode: |
-        function handler(event) {
-          var request = event.request;
-          if (request.uri.indexOf('.') === -1) request.uri = '/index.html';
-          return request;
-        }
-  Distribution:
-    Type: AWS::CloudFront::Distribution
-    Properties:
-      DistributionConfig:
-        Enabled: true
-        Comment: BillSense
-        DefaultRootObject: index.html
-        PriceClass: PriceClass_100
-        HttpVersion: http2
-        Origins:
-          - Id: frontend
-            DomainName: !GetAtt WebBucket.RegionalDomainName
-            OriginAccessControlId: !Ref OriginAccess
-            S3OriginConfig: {OriginAccessIdentity: ''}
-          - Id: api
-            DomainName: !Sub '${BillingAPI}.execute-api.${AWS::Region}.${AWS::URLSuffix}'
-            CustomOriginConfig:
-              OriginProtocolPolicy: https-only
-              OriginSSLProtocols: [TLSv1.2]
-        DefaultCacheBehavior:
-          TargetOriginId: frontend
-          ViewerProtocolPolicy: redirect-to-https
-          AllowedMethods: [GET, HEAD, OPTIONS]
-          Compress: true
-          CachePolicyId: !Ref StaticCache
-          ResponseHeadersPolicyId: !Ref SecurityHeaders
-          FunctionAssociations:
-            - EventType: viewer-request
-              FunctionARN: !GetAtt SpaRoutes.FunctionARN
-        CacheBehaviors:
-          - PathPattern: '/api/*'
-            TargetOriginId: api
-            ViewerProtocolPolicy: redirect-to-https
-            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
-            CachedMethods: [GET, HEAD]
-            CachePolicyId: !Ref NoApiCache
-            OriginRequestPolicyId: !Ref ApiForwarding
-            ResponseHeadersPolicyId: !Ref SecurityHeaders
-  WebBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref WebBucket
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Sid: CloudFrontReadOnly
-            Effect: Allow
-            Principal: {Service: cloudfront.amazonaws.com}
-            Action: s3:GetObject
-            Resource: !Sub '${WebBucket.Arn}/*'
-            Condition:
-              StringEquals:
-                AWS:SourceArn: !Sub 'arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}'
 Outputs:
-  WebsiteUrl:
-    Value: !Sub 'https://${Distribution.DomainName}'
-  FrontendBucket:
-    Value: !Ref WebBucket
-  DistributionId:
-    Value: !Ref Distribution
   ApiUrl:
+    Description: API origin. Keep the /api prefix in the Amplify reverse-proxy target.
     Value: !Sub 'https://${BillingAPI}.execute-api.${AWS::Region}.${AWS::URLSuffix}'
+  HealthUrl:
+    Value: !Sub 'https://${BillingAPI}.execute-api.${AWS::Region}.${AWS::URLSuffix}/api/v1/health'
+  FunctionName:
+    Value: !Ref BillingFunction

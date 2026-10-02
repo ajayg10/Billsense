@@ -53,3 +53,9 @@ test('unsupported monetary input displays useful error',async({page})=>{
  await page.getByRole('button',{name:'Analyze bill',exact:true}).click();
  await expect(page.getByRole('alert')).toContainText('Invalid monetary value');
 });
+test('hosting rewrite mistakes display a readable service error',async({page})=>{
+ await page.route('**/api/v1/samples/student-project',route=>route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><html>SPA fallback</html>'}));
+ await page.goto('/');
+ await page.getByRole('button',{name:'Try sample bill',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('billing service returned an unexpected response');
+});

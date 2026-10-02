@@ -10,7 +10,7 @@ from .analysis import AnalysisError, analyze_files, inspect, MAX_BYTES, category
 from .security import RequestLimitMiddleware
 
 app = FastAPI(title='BillSense API', version='1.0.0')
-origins = os.getenv('ALLOWED_ORIGINS', 'http://localhost:5173').split(',')
+origins = [origin.strip().rstrip('/') for origin in os.getenv('ALLOWED_ORIGINS', 'http://localhost:5173').split(',') if origin.strip()]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=['GET','POST'], allow_headers=['Content-Type'])
 app.add_middleware(RequestLimitMiddleware)
 SAMPLES = Path(__file__).resolve().parent / 'samples'

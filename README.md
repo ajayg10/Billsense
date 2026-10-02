@@ -11,7 +11,7 @@ A working React + FastAPI application for understanding small AWS billing CSV ex
 - Investigation checklist with official AWS documentation.
 - CSV export and browser Print / Save PDF.
 - Optional Amazon Bedrock explanations with explicit opt-in and deterministic fallback.
-- AWS SAM infrastructure for Lambda, API Gateway, private S3, and CloudFront.
+- AWS SAM backend infrastructure for Lambda/API Gateway, plus Amplify Hosting frontend build configuration.
 
 ## Run locally
 
@@ -71,9 +71,11 @@ Evidence record numbers count parsed CSV records, including the header, not phys
 
 ## Architecture
 
-React → same-origin `/api` → API Gateway → Lambda/Mangum → FastAPI parser/calculator. Optional consented explanation requests call Bedrock. S3/CloudFront serve static assets. No database and no user accounts.
+React on Amplify Hosting → same-origin `/api` reverse-proxy rewrite → API Gateway → Lambda/Mangum → FastAPI parser/calculator. Optional consented explanation requests call Bedrock. SAM deploys only the backend. No database and no user accounts.
 
 The UI uses custom CSS tokens and accessible Radix dialog primitives, React Router, Recharts, and Lucide. It deliberately avoids adding Tailwind, TanStack Query, or shadcn tooling for this first small stateless release; the API client and UI remain straightforward to extend.
+
+The repository-root `amplify.yml` builds `frontend/` and publishes its `dist/`. Set `AMPLIFY_MONOREPO_APP_ROOT=frontend` in Amplify. Run `infra/deploy.sh` to deploy the backend and generate ordered API/SPA rewrite rules. Configure those rules in Amplify separately.
 
 See [AWS deployment](docs/DEPLOYMENT.md), [verification status](docs/VERIFICATION.md), and [hackathon checklist](docs/HACKATHON.md).
 
