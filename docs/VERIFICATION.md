@@ -2,15 +2,15 @@
 
 ## Completed in the build environment
 
-- 18 backend tests passed, covering sample reconciliation, credits, labeled totals, Cost Explorer wide normalization, CUR optional fields, malformed data, mixed currencies, zero-prior comparison, duplicate warnings, upload inspection, AI-disabled behavior, malformed options, upload size limits, and base64 multipart API Gateway/Mangum integration.
-- 4 real Chromium browser tests passed: sample report/evidence/filtering/checklist/CSV export; uploaded CSV and AI-disabled fallback; mobile layout/navigation; malformed cost error.
+- 29 backend/deployment tests passed, covering sample reconciliation, credits, labeled totals, Cost Explorer wide normalization, CUR optional fields, malformed data, mixed currencies, zero-prior comparison, duplicate warnings, upload inspection, AI-disabled behavior, malformed options, upload size limits, base64 multipart API Gateway/Mangum integration, generated rewrite validation, exact built-template deployment, and refusing changes to existing full hosting stacks.
+- 5 real Chromium browser tests passed: sample report/evidence/filtering/checklist/CSV export; uploaded CSV and AI-disabled fallback; mobile layout/navigation; malformed cost error; hosting SPA responses returned to an API caller.
 - React/TypeScript production build passed.
 - Desktop and mobile screenshots captured and inspected. Included in this folder.
-- CloudFormation YAML parsed successfully with 12 resources. This is a syntax check, not an AWS deployment or SAM semantic validation.
+- Backend-only CloudFormation YAML parsed with three declared resources (HTTP API, Lambda and log group), and the Amplify appRoot/artifact path checks passed. This is offline validation, not an AWS deployment or full SAM semantic validation.
 
 ## Not yet verified externally
 
-- AWS deployment, resource provisioning, public reachability, CloudFront propagation, and cloud billing behavior: no configured AWS credentials in this workspace.
+- AWS deployment, resource provisioning, public reachability, Amplify rewrite propagation, and cloud billing behavior: no configured AWS credentials in this workspace.
 - Real Bedrock model invocation and output quality: no configured model access. AI-disabled fallback is tested.
 - Acceptance of the coding agent's connection method by the hackathon organizers: builder must verify and capture genuine evidence.
 - Formal accessibility audit and human user study.

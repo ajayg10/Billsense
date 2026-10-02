@@ -1,3 +1,5 @@
+> Deployment update: The current implementation uses Amplify Hosting for React and backend-only SAM for FastAPI. See DEPLOYMENT.md; the original S3/CloudFront design below is retained as historical build context.
+
 # BillSense — complete website build prompt
 
 Copy this entire prompt into your coding agent in the project workspace.

@@ -1,5 +1,20 @@
 import type { Report, Inspection, Options } from './types';
-async function request<T>(url:string, options?:RequestInit):Promise<T> {const r=await fetch(url, options);const data=await r.json();if(!r.ok)throw new Error(data.error?.message || data.detail?.[0]?.msg || 'The request could not be completed. Please try again.');return data;}
+
+// Development: Vite proxies /api. Production: Amplify must proxy /api before its SPA rewrite.
+async function request<T>(url:string, options?:RequestInit):Promise<T> {
+  let response: Response;
+  try { response=await fetch(url, {...options,cache:'no-store'}); }
+  catch { throw new Error('The billing service could not be reached. Please try again shortly.'); }
+  const type=response.headers.get('content-type') || '';
+  if (!type.includes('application/json')) {
+    throw new Error('The billing service returned an unexpected response. Please try again shortly.');
+  }
+  let data;
+  try { data=await response.json(); }
+  catch { throw new Error('The billing service returned an unreadable response. Please try again shortly.'); }
+  if(!response.ok)throw new Error(data.error?.message || data.detail?.[0]?.msg || data.message || 'The request could not be completed. Please try again.');
+  return data;
+}
 export const sample=()=>request<Report>('/api/v1/samples/student-project');
 export const inspect=(file:File)=>{const f=new FormData();f.append('file',file);return request<Inspection>('/api/v1/inspect',{method:'POST',body:f});};
 export function form(files:File[], opts:Options[]){const f=new FormData();f.append('current',files[0]);if(files[1])f.append('previous',files[1]);f.append('options',JSON.stringify({current:opts[0],...(files[1]?{previous:opts[1]}:{})}));return f;}
