@@ -33,7 +33,7 @@ Resources:
     Properties:
       CodeUri: ../backend/
       Handler: app.main.handler
-      Runtime: python3.12
+      Runtime: python3.11
       Architectures: [x86_64]
       MemorySize: 512
       Timeout: 28
