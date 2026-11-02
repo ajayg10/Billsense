@@ -20,6 +20,9 @@ test('sample report, evidence, filtering, next steps, and CSV export',async({pag
  await page.getByRole('tab',{name:'Overview',exact:true}).click();
  const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export CSV'}).click();
  expect((await download).suggestedFilename()).toBe('billsense-report.csv');
+ await expect(page.getByRole('button',{name:/Copy Markdown/})).toBeVisible();
+ await page.locator('.opt-card.interactive').first().click();
+ await expect(page.locator('.sim-banner')).toBeVisible();
  await page.evaluate(()=>window.scrollTo(0,0));
  await expect(page.locator('.recharts-area-curve')).toBeVisible();
  await page.screenshot({path:'../docs/report-desktop.png',fullPage:true});
