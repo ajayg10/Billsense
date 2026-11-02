@@ -46,19 +46,42 @@ async def read_file(file):
 def health():
     return {'status':'ok','ai_enabled':os.getenv('AI_ENABLED','false').lower() == 'true'}
 
+SAMPLE_CATALOG = {
+    'student-project': {
+        'name': 'Student project · September 2026',
+        'description': 'Synthetic EC2, S3, RDS, Lambda and transfer charges with an August comparison.',
+        'files': [('current.csv', 'September-2026.csv'), ('previous.csv', 'August-2026.csv')]
+    },
+    'nat-gateway-spike': {
+        'name': 'NAT Gateway Surprise · October 2026',
+        'description': 'Cross-AZ traffic and NAT Gateway data processing spike caused by missing VPC S3 endpoint.',
+        'files': [('nat-gateway-current.csv', 'October-2026.csv'), ('nat-gateway-previous.csv', 'September-2026.csv')]
+    },
+    'orphaned-storage': {
+        'name': 'Orphaned Volumes & Idle RDS · October 2026',
+        'description': 'Unattached gp3 EBS volumes and Multi-AZ database charges lingering after a test deployment.',
+        'files': [('orphaned-storage-current.csv', 'October-2026.csv'), ('orphaned-storage-previous.csv', 'September-2026.csv')]
+    }
+}
+
 @app.get('/api/v1/samples')
 def samples():
-    return [{'id':'student-project','name':'Student project · September 2026','description':'Synthetic EC2, S3, RDS, Lambda and transfer charges with an August comparison.'}]
+    return [{'id': k, 'name': v['name'], 'description': v['description']} for k, v in SAMPLE_CATALOG.items()]
 
-@app.get('/api/v1/samples/student-project')
-def sample():
-    return analyze_files([( (SAMPLES/'current.csv').read_bytes(), 'September-2026.csv'), ((SAMPLES/'previous.csv').read_bytes(), 'August-2026.csv')], sample=True)
+@app.get('/api/v1/samples/{name}')
+def sample(name: str):
+    if name not in SAMPLE_CATALOG:
+        raise AnalysisError('NOT_FOUND', 'Sample not found.')
+    entry = SAMPLE_CATALOG[name]
+    file_payloads = [((SAMPLES / fname).read_bytes(), label) for fname, label in entry['files']]
+    return analyze_files(file_payloads, sample=True)
 
 @app.get('/api/v1/samples/{name}/download')
 def download(name: str):
-    if name not in ('current','previous','template'):
-        raise AnalysisError('NOT_FOUND','Sample not found.')
-    return Response((SAMPLES/f'{name}.csv').read_bytes(), media_type='text/csv', headers={'Content-Disposition':f'attachment; filename="billsense-{name}.csv"'})
+    allowed = {'current', 'previous', 'template', 'nat-gateway-current', 'nat-gateway-previous', 'orphaned-storage-current', 'orphaned-storage-previous'}
+    if name not in allowed:
+        raise AnalysisError('NOT_FOUND', 'Sample not found.')
+    return Response((SAMPLES / f'{name}.csv').read_bytes(), media_type='text/csv', headers={'Content-Disposition': f'attachment; filename="billsense-{name}.csv"'})
 
 @app.post('/api/v1/inspect')
 async def inspect_file(file: Annotated[UploadFile, File()]):

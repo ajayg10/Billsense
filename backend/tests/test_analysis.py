@@ -99,3 +99,28 @@ def test_invalid_options_are_rejected():
 def test_oversized_body_rejected_before_parsing():
     r=client.post('/api/v1/analyze',content=b'x'*(1024*1024+65537),headers={'Content-Type':'multipart/form-data; boundary=x'})
     assert r.status_code==413
+
+
+def test_samples_catalog():
+    r = client.get('/api/v1/samples').json()
+    assert len(r) >= 3
+    sample_ids = {s['id'] for s in r}
+    assert 'student-project' in sample_ids
+    assert 'nat-gateway-spike' in sample_ids
+    assert 'orphaned-storage' in sample_ids
+
+def test_additional_sample_scenarios():
+    for sample_id in ['nat-gateway-spike', 'orphaned-storage']:
+        r = client.get(f'/api/v1/samples/{sample_id}').json()
+        assert r['sample'] is True
+        assert Decimal(r['metrics']['net']) > 0
+        assert r['comparison'] is not None
+        assert Decimal(r['comparison']['change']) > 0
+        assert len(r['findings']) > 0
+        # Check that services sum up correctly
+        assert sum(Decimal(s['cost']) for s in r['services']) == Decimal(r['metrics']['net'])
+
+def test_unknown_sample_returns_error():
+    r = client.get('/api/v1/samples/nonexistent-sample')
+    assert r.status_code == 422
+    assert r.json()['error']['code'] == 'NOT_FOUND'

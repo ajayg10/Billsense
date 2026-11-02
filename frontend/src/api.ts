@@ -15,7 +15,9 @@ async function request<T>(url:string, options?:RequestInit):Promise<T> {
   if(!response.ok)throw new Error(data.error?.message || data.detail?.[0]?.msg || data.message || 'The request could not be completed. Please try again.');
   return data;
 }
-export const sample=()=>request<Report>('/api/v1/samples/student-project');
+export interface SampleSummary { id: string; name: string; description: string; }
+export const getSamples = () => request<SampleSummary[]>('/api/v1/samples');
+export const sample = (id = 'student-project') => request<Report>(`/api/v1/samples/${id}`);
 export const inspect=(file:File)=>{const f=new FormData();f.append('file',file);return request<Inspection>('/api/v1/inspect',{method:'POST',body:f});};
 export function form(files:File[], opts:Options[]){const f=new FormData();f.append('current',files[0]);if(files[1])f.append('previous',files[1]);f.append('options',JSON.stringify({current:opts[0],...(files[1]?{previous:opts[1]}:{})}));return f;}
 export const analyze=(files:File[],opts:Options[])=>request<Report>('/api/v1/analyze',{method:'POST',body:form(files,opts)});
