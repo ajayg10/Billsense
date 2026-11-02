@@ -1,6 +1,12 @@
 # BillSense
 
+[![CI](https://github.com/ajayg10/Billsense/actions/workflows/ci.yml/badge.svg)](https://github.com/ajayg10/Billsense/actions/workflows/ci.yml)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-AWS%20Amplify-teal)](https://main.d3opjehhlaksce.amplifyapp.com)
+[![AWS Architecture](https://img.shields.io/badge/Architecture-Serverless%20%7C%20FastAPI%20%7C%20Bedrock-orange)](https://github.com/ajayg10/Billsense)
+
 A working React + FastAPI application for understanding small AWS billing CSV exports. Monetary calculations use Python Decimal. Every finding links to source records.
+
+[🌐 **Try the Live App on AWS Amplify**](https://main.d3opjehhlaksce.amplifyapp.com)
 
 ## Included
 
@@ -9,13 +15,15 @@ A working React + FastAPI application for understanding small AWS billing CSV ex
 - Credits/adjustments, service and regional totals, daily chart when dates exist, comparisons, and data-quality notices.
 - Searchable, sortable, paginated source evidence and finding drawers.
 - Investigation checklist with official AWS documentation.
+- Ready-to-run read-only AWS CLI commands to audit orphaned EBS volumes, idle NAT Gateways, and databases.
+- Interactive what-if cloud savings simulator and markdown summary exporter.
 - CSV export and browser Print / Save PDF.
 - Optional Amazon Bedrock explanations with explicit opt-in and deterministic fallback.
 - AWS SAM backend infrastructure for Lambda/API Gateway, plus Amplify Hosting frontend build configuration.
 
 ## Run locally
 
-Prerequisites: Python 3.12+ and Node.js 22+.
+Prerequisites: Python 3.11+ and Node.js 22+.
 
 Terminal 1, from the project root:
 
@@ -84,5 +92,3 @@ See [AWS deployment](docs/DEPLOYMENT.md), [verification status](docs/VERIFICATIO
 Uploads are transmitted to the backend and processed transiently. Reports live only in tab memory; refreshing clears them. No raw bill storage or application logging. Explicitly requested AI explanations send neutralized service categories, verified shares, and finding IDs—not raw CSVs or resource/account identifiers. Cloud infrastructure can retain operational request metadata.
 
 Costs do not establish resource idleness or safe deletion. AI explanations are possibilities, never verified causes or savings. App does not connect to or change a user's AWS resources.
-
-No AWS deployment or real Bedrock invocation is implied by the source code. Check the verification document for what was actually tested.
