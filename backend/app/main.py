@@ -76,12 +76,24 @@ def sample(name: str):
     file_payloads = [((SAMPLES / fname).read_bytes(), label) for fname, label in entry['files']]
     return analyze_files(file_payloads, sample=True)
 
+SAMPLE_FILE_MAP = {
+    'student-project': 'current.csv',
+    'student-project-previous': 'previous.csv',
+    'nat-gateway-spike': 'nat-gateway-current.csv',
+    'nat-gateway-spike-previous': 'nat-gateway-previous.csv',
+    'orphaned-storage': 'orphaned-storage-current.csv',
+    'orphaned-storage-previous': 'orphaned-storage-previous.csv',
+    'current': 'current.csv',
+    'previous': 'previous.csv',
+    'template': 'template.csv',
+}
+
 @app.get('/api/v1/samples/{name}/download')
 def download(name: str):
-    allowed = {'current', 'previous', 'template', 'nat-gateway-current', 'nat-gateway-previous', 'orphaned-storage-current', 'orphaned-storage-previous'}
-    if name not in allowed:
+    fname = SAMPLE_FILE_MAP.get(name) or (f'{name}.csv' if (SAMPLES / f'{name}.csv').exists() else None)
+    if not fname or not (SAMPLES / fname).exists():
         raise AnalysisError('NOT_FOUND', 'Sample not found.')
-    return Response((SAMPLES / f'{name}.csv').read_bytes(), media_type='text/csv', headers={'Content-Disposition': f'attachment; filename="billsense-{name}.csv"'})
+    return Response((SAMPLES / fname).read_bytes(), media_type='text/csv', headers={'Content-Disposition': f'attachment; filename="billsense-{name}.csv"'})
 
 @app.post('/api/v1/inspect')
 async def inspect_file(file: Annotated[UploadFile, File()]):

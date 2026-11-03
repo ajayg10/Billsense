@@ -82,8 +82,11 @@ def test_zero_previous_no_percentage():
     assert r['comparison']['percentage'] is None
 
 def test_mangum_http_api_multipart():
-    import base64
     from app.main import handler
+    if handler is None:
+        import pytest
+        pytest.skip("mangum not installed")
+    import base64
     body=b'--bound\r\nContent-Disposition: form-data; name="current"; filename="bill.csv"\r\nContent-Type: text/csv\r\n\r\nservice,cost,currency\nEC2,1.50,USD\n\r\n--bound--\r\n'
     event={'version':'2.0','routeKey':'POST /api/v1/analyze','rawPath':'/api/v1/analyze','rawQueryString':'','headers':{'content-type':'multipart/form-data; boundary=bound','host':'test.example'},'requestContext':{'http':{'method':'POST','path':'/api/v1/analyze','sourceIp':'127.0.0.1','protocol':'HTTP/1.1'},'stage':'$default'},'body':base64.b64encode(body).decode(),'isBase64Encoded':True}
     result=handler(event,{})
@@ -124,3 +127,11 @@ def test_unknown_sample_returns_error():
     r = client.get('/api/v1/samples/nonexistent-sample')
     assert r.status_code == 422
     assert r.json()['error']['code'] == 'NOT_FOUND'
+
+
+def test_sample_downloads():
+    for name in ['student-project', 'nat-gateway-spike', 'orphaned-storage', 'template', 'current']:
+        r = client.get(f'/api/v1/samples/{name}/download')
+        assert r.status_code == 200
+        assert 'text/csv' in r.headers['content-type']
+        assert len(r.content) > 0

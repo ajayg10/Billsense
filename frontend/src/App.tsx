@@ -114,6 +114,15 @@ function copyMarkdown(report:Report){
  ].filter(Boolean).join('\n');
  navigator.clipboard.writeText(md);
 }
+function exportJSON(report:Report){
+ const data=JSON.stringify(report,null,2);
+ const url=URL.createObjectURL(new Blob([data],{type:'application/json;charset=utf-8;'}));
+ const a=document.createElement('a');
+ a.href=url;
+ a.download=`billsense-audit-${report.meta.period.toLowerCase().replace(/[^a-z0-9]/g,'-')||'report'}.json`;
+ a.click();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
 function exportCSV(report:Report){const esc=(v:string)=>'"'+(/^[=+@\-\t\r]/.test(v)?"'"+v:v).replaceAll('"','""')+'"';const rows=[['Service','Net cost','Currency','Period','Cost basis','Sample data'].join(','),...report.services.map(s=>[esc(s.name),s.cost,report.meta.currency,esc(report.meta.period),report.meta.cost_basis,String(report.sample)].join(','))];const url=URL.createObjectURL(new Blob([rows.join('\r\n')],{type:'text/csv;charset=utf-8;'}));const a=document.createElement('a');a.href=url;a.download='billsense-report.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function ReportPage({report:r,ai,aiStatus,canExplain,explain,onSwitchDemo,busy}:{report:Report;ai:Record<string,string>;aiStatus:string;canExplain:boolean;explain:()=>void;onSwitchDemo?:(id:string)=>void;busy?:boolean}){
  const[tab,setTab]=useState('overview'),[evidence,setEvidence]=useState<Finding|null>(null),[completed,setCompleted]=useState<string[]>([]),[consent,setConsent]=useState(false),[copiedId,setCopiedId]=useState<string|null>(null);
@@ -123,7 +132,7 @@ function ReportPage({report:r,ai,aiStatus,canExplain,explain,onSwitchDemo,busy}:
  const[simS3Tier,setSimS3Tier]=useState(false);
  useEffect(()=>{setTab('overview');setEvidence(null);setCompleted([]);setConsent(false);setCopiedId(null);},[r]);
  const c=(v:string|number)=>currency(v,r.meta.currency);const biggest=r.services[0];const change=Number(r.comparison?.change||0);
- return <main className="content report-page"><div className="page-heading"><div><div className="heading-eyebrow"><span className="eyebrow">YOUR CLOUD, IN FOCUS</span>{r.sample&&<span className="badge">Sample data</span>}</div><h1>Billing overview</h1><p>A clearer picture of where your cloud spend goes.</p></div><div className="heading-actions"><button className="secondary" onClick={()=>{copyMarkdown(r);setCopiedMd(true);setTimeout(()=>setCopiedMd(false),2000);}}>{copiedMd?<><Check size={16}/>Copied Markdown</>:<><FileText size={16}/>Copy Markdown</>}</button><button className="secondary" onClick={()=>exportCSV(r)}><Download size={16}/>Export CSV</button><Link className="button primary" to="/analyze"><Plus size={17}/>New analysis</Link></div></div><div className="report-meta"><span><FileText size={15}/>{r.meta.filename}</span><span>{r.meta.period}</span><span>{r.meta.currency} · {r.meta.cost_basis==='exported'?'As exported':r.meta.cost_basis}</span>{r.sample && onSwitchDemo && (
+ return <main className="content report-page"><div className="page-heading"><div><div className="heading-eyebrow"><span className="eyebrow">YOUR CLOUD, IN FOCUS</span>{r.sample&&<span className="badge">Sample data</span>}</div><h1>Billing overview</h1><p>A clearer picture of where your cloud spend goes.</p></div><div className="heading-actions"><button className="secondary" onClick={()=>{copyMarkdown(r);setCopiedMd(true);setTimeout(()=>setCopiedMd(false),2000);}}>{copiedMd?<><Check size={16}/>Copied Markdown</>:<><FileText size={16}/>Copy Markdown</>}</button><button className="secondary" onClick={()=>exportCSV(r)}><Download size={16}/>Export CSV</button><button className="secondary" onClick={()=>exportJSON(r)}><FileText size={16}/>Export JSON</button><Link className="button primary" to="/analyze"><Plus size={17}/>New analysis</Link></div></div><div className="report-meta"><span><FileText size={15}/>{r.meta.filename}</span><span>{r.meta.period}</span><span>{r.meta.currency} · {r.meta.cost_basis==='exported'?'As exported':r.meta.cost_basis}</span>{r.sample && onSwitchDemo && (
   <span className="sample-switcher">
     <Database size={14}/>
     <label htmlFor="demo-select" className="visually-hidden">Switch sample scenario</label>
