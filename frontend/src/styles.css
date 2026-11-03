@@ -59,3 +59,23 @@
 
 .sample-switcher{display:inline-flex;align-items:center;gap:6px;background:#eef7f4;border:1px solid #cce5dc;border-radius:6px;padding:2px 8px}
 .sample-switcher select{font-size:12px;background:transparent;border:0;padding:2px 4px;color:#147d73;font-weight:600;cursor:pointer;outline:none}
+
+
+/* AWS Budget Alarm Modal & Step Banner */
+.budget-dialog{max-width:760px}
+.budget-output-box{background:#0d1e1c;border:1px solid #1a3834;border-radius:8px;padding:12px 14px;margin-top:10px}
+.budget-code-preview{margin:0;max-height:180px;overflow-y:auto;background:transparent;color:#85e4d2;font-size:11px;line-height:1.45;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;white-space:pre}
+
+.budget-step-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;background:#eef7f4;border:1px solid #c2e5de;border-radius:9px;padding:16px 20px;margin-bottom:20px;flex-wrap:wrap}
+.budget-step-left{display:flex;align-items:center;gap:14px}
+.budget-step-icon{display:grid;place-items:center;width:40px;height:40px;background:#fff;border:1px solid #cce5dc;border-radius:8px;color:#147d73}
+.budget-step-left strong{display:block;font-size:14px;color:#133c37;margin-bottom:3px}
+.budget-step-left p{font-size:12px;color:#55756c;margin:0;line-height:1.4}
+
+/* Landing Page Quick Scenario Chips */
+.hero-scenarios{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:16px}
+.hero-scenario-label{font-size:11px;font-weight:600;color:#617e76;text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;gap:5px}
+.scenario-chip{font-size:12px;font-weight:600;color:#147d73;background:#edf6f3;border:1px solid #cde3dc;padding:5px 11px;border-radius:20px;cursor:pointer;transition:all .15s}
+.scenario-chip:hover:not(:disabled){background:#daf0e9;border-color:#a2d4c7;color:#0e5e56}
+
+.service-spike-pill{font-size:10px;font-weight:700;color:#9a3412;background:#ffedd5;border:1px solid #fed7aa;border-radius:10px;padding:1px 6px;margin-left:5px;display:inline-flex;align-items:center;line-height:1.2}
