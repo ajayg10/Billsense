@@ -10,16 +10,18 @@ A working React + FastAPI application for understanding small AWS billing CSV ex
 
 ## Included
 
-- Responsive landing page, upload and column-mapping workflow, and billing workspace.
-- One-click synthetic demo with two periods; current net total **USD 370.50**, previous **USD 220.70**, change **USD 149.80**.
-- Credits/adjustments, service and regional totals, daily chart when dates exist, comparisons, and data-quality notices.
-- Searchable, sortable, paginated source evidence and finding drawers.
-- Investigation checklist with official AWS documentation.
-- Ready-to-run read-only AWS CLI commands to audit orphaned EBS volumes, idle NAT Gateways, and databases.
-- Interactive what-if cloud savings simulator and markdown summary exporter.
-- CSV export and browser Print / Save PDF.
-- Optional Amazon Bedrock explanations with explicit opt-in and deterministic fallback.
-- AWS SAM backend infrastructure for Lambda/API Gateway, plus Amplify Hosting frontend build configuration.
+- **Multi-Scenario Real-World Catalog**: Instant 1-click loading for realistic billing scenarios:
+  - *Student Starter Project* ($370.50 baseline across EC2, RDS, and S3).
+  - *NAT Gateway & Cross-AZ Data Transfer Spike* ($642.80 with +138% network spike).
+  - *Orphaned Storage & Idle RDS* ($512.40 with unattached gp3 EBS volumes and Multi-AZ DB).
+- **Automated AWS Budget CloudFormation Generator**: Turnkey `AWS::Budgets::Budget` YAML template & 1-line AWS CLI deploy command to set up proactive spend alarms at 80% and 100% thresholds.
+- **Interactive Cloud Savings Simulator**: What-If architectural projection for Graviton (ARM64) migration, non-production off-hours scheduling, and S3 Intelligent-Tiering.
+- **Cost Spike Indicators**: Visual anomaly badges on services with significant period-over-period spend jumps.
+- **Multiple Audit Export Formats**: Structured JSON audit export (`billsense-audit.json`), CSV report (`billsense-report.csv`), Copy Markdown Summary, and browser Print / Save PDF.
+- **Searchable Source Evidence**: Traceable record drawer linking every calculated finding back to exact CSV line items.
+- **Investigation Checklist & AWS CLI Snippets**: Read-only CLI commands and documentation links to inspect idle resources safely.
+- **Zero-Trust Privacy Architecture**: Stateless backend, ephemeral memory processing, no database, no bill storage, and zero AWS credentials required.
+- **Optional Amazon Bedrock Explanations**: Anonymized categories and finding IDs with strict temperature guardrails and deterministic fallback.
 
 ## Run locally
 
